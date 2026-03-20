@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>UWU FNAF Minecraft OwO</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      font-family: 'Courier New', monospace;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #game-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      color: #fff;
+    }
+    #overlay h1 {
+      font-size: clamp(1.5rem, 5vw, 3rem);
+      background: linear-gradient(90deg, #ff69b4, #ff9900, #ffff00, #00ff88, #00cfff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    #overlay p {
+      color: #aaa;
+      margin-bottom: 2rem;
+      text-align: center;
+      font-size: clamp(0.75rem, 2.5vw, 1rem);
+      padding: 0 1rem;
+    }
+    #start-btn {
+      background: linear-gradient(135deg, #ff69b4, #a855f7);
+      color: #fff;
+      border: none;
+      padding: 1rem 2.5rem;
+      font-size: 1.2rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.1em;
+      box-shadow: 0 0 30px rgba(255,105,180,0.5);
+    }
+    #start-btn:hover { filter: brightness(1.2); }
+    #controls-hint {
+      margin-top: 1.5rem;
+      color: #888;
+      font-size: 0.75rem;
+      text-align: center;
+      line-height: 1.8;
+    }
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      color: #fff;
+    }
+    #loading-screen h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #ff69b4;
+    }
+    #loading-bar-wrap {
+      width: 300px;
+      height: 8px;
+      background: #222;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ff69b4, #a855f7);
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: none;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,0.85);
+    }
+    #crosshair::before { width: 2px; height: 16px; top: 2px; left: 9px; }
+    #crosshair::after  { width: 16px; height: 2px; top: 9px; left: 2px; }
+    #health-bar-wrap {
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      width: 160px;
+    }
+    .bar-label { color: #fff; font-size: 0.65rem; margin-bottom: 3px; letter-spacing: 0.1em; }
+    .bar-outer { height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); }
+    #health-bar { height: 100%; background: #e74c3c; border-radius: 5px; width: 100%; transition: width 0.2s; }
+    #stamina-bar-wrap { position: absolute; bottom: 55px; left: 20px; width: 160px; }
+    #stamina-bar { height: 100%; background: #f39c12; border-radius: 5px; width: 100%; transition: width 0.1s; }
+    #gun-hud {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 10px 14px;
+      min-width: 220px;
+      color: #fff;
+      font-size: 0.75rem;
+    }
+    #gun-name { font-size: 1rem; color: #ff9900; margin-bottom: 6px; font-weight: bold; }
+    #ammo-display { font-size: 1.4rem; color: #fff; margin-bottom: 4px; }
+    #ammo-display span { color: #888; font-size: 0.9rem; }
+    #gun-state-line { color: #aaa; font-size: 0.7rem; margin-bottom: 4px; }
+    #gun-condition { font-size: 0.7rem; }
+    #magazine-bullets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px;
+      margin-top: 6px;
+      max-width: 200px;
+    }
+    .bullet-pip {
+      width: 7px;
+      height: 14px;
+      border-radius: 2px;
+      background: #f39c12;
+    }
+    .bullet-pip.empty { background: #333; border: 1px solid #555; }
+    .bullet-pip.chambered { background: #e74c3c; }
+    #attachments-display { margin-top: 6px; color: #888; font-size: 0.65rem; }
+    #attachment-slot { color: #66ff88; }
+    #status-effects {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .status-pill {
+      background: rgba(0,0,0,0.6);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 0.7rem;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .status-pill.active { border-color: #ff69b4; color: #ff69b4; }
+    #dodge-cooldown {
+      position: absolute;
+      bottom: 140px;
+      left: 20px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 0.65rem;
+      color: #aaa;
+    }
+    #portal-status {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 8px;
+    }
+    .portal-indicator {
+      width: 30px;
+      height: 45px;
+      border-radius: 15px;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: #fff;
+    }
+    .portal-indicator.blue { border-color: #00aaff; box-shadow: 0 0 8px #00aaff; }
+    .portal-indicator.orange { border-color: #ff6600; box-shadow: 0 0 8px #ff6600; }
+    #interact-hint {
+      position: absolute;
+      bottom: 160px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #fff;
+      display: none;
+    }
+    #mobile-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+    .joystick-zone {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.15);
+      pointer-events: all;
+      touch-action: none;
+    }
+    #left-joystick-zone { bottom: 120px; left: 30px; }
+    #right-joystick-zone { bottom: 120px; right: 30px; }
+    .joystick-knob {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      border: 2px solid rgba(255,255,255,0.4);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .mobile-btn {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.25);
+      color: #fff;
+      font-size: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: all;
+      touch-action: none;
+      text-align: center;
+      line-height: 1.2;
+    }
+    #btn-jump { width: 55px; height: 55px; bottom: 220px; right: 175px; background: rgba(0,200,100,0.2); border-color: #00c864; }
+    #btn-dodge { width: 50px; height: 50px; bottom: 280px; right: 120px; background: rgba(255,165,0,0.2); border-color: #ffa500; }
+    #btn-shoot { width: 65px; height: 65px; bottom: 160px; right: 110px; background: rgba(255,50,50,0.25); border-color: #ff3232; font-size: 0.65rem; }
+    #btn-reload { width: 45px; height: 45px; bottom: 230px; right: 50px; background: rgba(255,200,0,0.2); border-color: #ffc800; }
+    #btn-grapple { width: 45px; height: 45px; bottom: 270px; left: 175px; background: rgba(0,200,255,0.2); border-color: #00c8ff; }
+    #btn-portal-b { width: 45px; height: 45px; bottom: 215px; left: 170px; background: rgba(0,100,255,0.25); border-color: #0064ff; }
+    #btn-portal-o { width: 45px; height: 45px; bottom: 160px; left: 175px; background: rgba(255,120,0,0.25); border-color: #ff7800; }
+    #btn-interact { width: 45px; height: 45px; bottom: 290px; right: 175px; background: rgba(200,0,255,0.2); border-color: #c800ff; }
+    #btn-sprint { width: 40px; height: 40px; bottom: 120px; left: 175px; background: rgba(0,255,150,0.15); border-color: #00ff96; }
+    .damage-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(220,0,0,0.35);
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .heal-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,220,100,0.2);
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #roll-flash {
+      position: fixed;
+      inset: 0;
+      border: 4px solid rgba(255,200,0,0.5);
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      border-radius: 4px;
+      transition: opacity 0.15s;
+    }
+    #debug-info {
+      position: absolute;
+      top: 50px;
+      left: 20px;
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.4);
+      line-height: 1.6;
+    }
+    #weapon-select-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+    }
+    .weapon-slot {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.5);
+      border: 2px solid rgba(255,255,255,0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.55rem;
+      color: #888;
+      gap: 2px;
+    }
+    .weapon-slot.active { border-color: #ff9900; color: #ff9900; }
+    .weapon-slot-icon { font-size: 1.2rem; }
+    #kill-feed {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-end;
+    }
+    .kill-entry {
+      background: rgba(0,0,0,0.5);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.65rem;
+      color: #fff;
+      animation: fadeOut 3s forwards;
+    }
+    @keyframes fadeOut { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+    #paused-text {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font-size: 2rem;
+      display: none;
+      z-index: 90;
+      text-shadow: 0 0 20px #ff69b4;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Loading screen -->
+  <div id="loading-screen">
+    <h2>uwu loading... OwO</h2>
+    <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
+    <p id="loading-status" style="margin-top:1rem;color:#888;font-size:0.75rem;">Initializing...</p>
+  </div>
+
+  <!-- Start overlay -->
+  <div id="overlay" style="display:none;">
+    <h1>UWU FNAF MINECRAFT<br/>OwO Edition</h1>
+    <p>Voxel world · Dark Souls roll · Titanfall grapple<br/>
+       Tarkov guns · Portal gun · Cute FNAF friends · Rainbows & kittens</p>
+    <button id="start-btn">Click to Play OwO</button>
+    <div id="controls-hint">
+      WASD Move · Space Jump · Shift Sprint · Ctrl Crouch/Slide<br/>
+      Left Click Shoot/Portal-B · Right Click ADS/Portal-O<br/>
+      G Grapple · Q Dodge Roll · R Reload · B Rack Bolt<br/>
+      T Clear Jam · I Inspect · 1-5 Weapons · F Interact<br/>
+      E Place Block · Tab Pause
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="crosshair"></div>
+    <div id="status-effects">
+      <div class="status-pill" id="status-rolling" style="display:none;">⚡ ROLLING</div>
+      <div class="status-pill" id="status-sliding" style="display:none;">💨 SLIDING</div>
+      <div class="status-pill" id="status-grapple" style="display:none;">🪝 GRAPPLING</div>
+      <div class="status-pill" id="status-jammed" style="display:none;">⚠ JAM!</div>
+    </div>
+    <div id="health-bar-wrap">
+      <div class="bar-label">♥ HEALTH</div>
+      <div class="bar-outer"><div id="health-bar"></div></div>
+    </div>
+    <div id="stamina-bar-wrap">
+      <div class="bar-label">⚡ STAMINA</div>
+      <div class="bar-outer"><div id="stamina-bar"></div></div>
+    </div>
+    <div id="gun-hud">
+      <div id="gun-name">PISTOL</div>
+      <div id="ammo-display">7 <span>/ 7</span></div>
+      <div id="gun-state-line">READY</div>
+      <div id="gun-condition">Condition: <span id="condition-val">100</span>%</div>
+      <div id="magazine-bullets"></div>
+      <div id="attachments-display">Attachments: <span id="attachment-slot">None</span></div>
+    </div>
+    <div id="portal-status">
+      <div class="portal-indicator" id="portal-b-ind">B</div>
+      <div class="portal-indicator" id="portal-o-ind">O</div>
+    </div>
+    <div id="weapon-select-bar">
+      <div class="weapon-slot active" id="wslot-0"><div class="weapon-slot-icon">🔫</div><div>Pistol</div></div>
+      <div class="weapon-slot" id="wslot-1"><div class="weapon-slot-icon">🪖</div><div>Rifle</div></div>
+      <div class="weapon-slot" id="wslot-2"><div class="weapon-slot-icon">💥</div><div>Shotgun</div></div>
+      <div class="weapon-slot" id="wslot-3"><div class="weapon-slot-icon">🌀</div><div>Portal</div></div>
+    </div>
+    <div id="interact-hint">F - Interact</div>
+    <div id="debug-info"></div>
+    <div id="kill-feed"></div>
+  </div>
+
+  <div class="damage-flash" id="damage-flash"></div>
+  <div class="heal-flash" id="heal-flash"></div>
+  <div id="roll-flash"></div>
+  <div id="paused-text">PAUSED</div>
+
+  <!-- Mobile controls -->
+  <div id="mobile-controls">
+    <div class="joystick-zone" id="left-joystick-zone">
+      <div class="joystick-knob" id="left-knob"></div>
+    </div>
+    <div class="joystick-zone" id="right-joystick-zone">
+      <div class="joystick-knob" id="right-knob"></div>
+    </div>
+    <div class="mobile-btn" id="btn-jump">JUMP</div>
+    <div class="mobile-btn" id="btn-dodge">ROLL</div>
+    <div class="mobile-btn" id="btn-shoot">SHOOT</div>
+    <div class="mobile-btn" id="btn-reload">REL</div>
+    <div class="mobile-btn" id="btn-grapple">HOOK</div>
+    <div class="mobile-btn" id="btn-portal-b">🔵</div>
+    <div class="mobile-btn" id="btn-portal-o">🟠</div>
+    <div class="mobile-btn" id="btn-interact">USE</div>
+    <div class="mobile-btn" id="btn-sprint">RUN</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

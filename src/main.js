@@ -66,6 +66,7 @@ async function init() {
 
     // Create game
     game = new Game(canvas, isMobile);
+    window.game = game; // expose for debugging/automation
 
     // Show HUD
     if (hud) hud.style.display = 'block';

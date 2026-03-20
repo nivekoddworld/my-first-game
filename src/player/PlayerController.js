@@ -125,15 +125,15 @@ export class PlayerController {
     const ys = [Math.floor(minY), Math.floor(maxY - EPSILON)];
     const zs = [Math.floor(minZ), Math.floor(maxZ)];
 
-    let collision = false;
+    let resolved = false;
 
     for (const x of new Set(xs)) {
+      if (resolved) break;
       for (const y of new Set(ys)) {
+        if (resolved) break;
         for (const z of new Set(zs)) {
           if (y < 0 || y >= CHUNK_H) continue;
           if (isSolid(world.getBlock(x, y, z))) {
-            collision = true;
-
             if (axis === 'x') {
               if (vel.x > 0) pos.x = x - hw - EPSILON;
               else pos.x = x + 1 + hw + EPSILON;
@@ -141,12 +141,13 @@ export class PlayerController {
             } else if (axis === 'y') {
               if (vel.y < 0) {
                 pos.y = y + 1;
-                vel.y = 0;
                 p.onGround = true;
               } else {
                 pos.y = y - h - EPSILON;
-                vel.y = 0;
               }
+              vel.y = 0;
+              resolved = true;
+              break;
             } else if (axis === 'z') {
               if (vel.z > 0) pos.z = z - hw - EPSILON;
               else pos.z = z + 1 + hw + EPSILON;
